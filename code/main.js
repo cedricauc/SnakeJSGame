@@ -224,62 +224,19 @@ onUpdate(() => {
   if (timer < move_delay) return
   timer = 0
 
-  // ajoute au tableau la direction saisie
+  // ajoute au tableau une saisie direction
   snake_direction.push(current_direction)
 
-  // supprime dernier élément du tableau
+  // supprime dernier élément saisie direction du tableau
   destroy(snake_direction.shift())
 
-  let temp_snake = []
+  // lorsque le serpent s'agrandit
+  if (snake_length !== snake.length) {
+    snake = add_part_to_snake()
+  }
 
-  let tail = update_snake_tail(snake_direction[0], snake_direction[1])
-
-  // place dernier élément du serpent
-  temp_snake.push(
-    add([
-      sprite(tail[2]),
-      pos(
-        snake[snake.length - 3].pos.x + tail[0],
-        snake[snake.length - 3].pos.y + tail[1],
-      ),
-      area(),
-      'snake',
-    ]),
-  )
-
-  let body = update_snake_body(snake_direction[2], snake_direction[1])
-
-  // place le corps du serpent
-  temp_snake.push(
-    add([
-      sprite(body[2]),
-      pos(
-        snake[snake.length - 2].pos.x + body[0],
-        snake[snake.length - 2].pos.y + body[1],
-      ),
-      area(),
-      'snake',
-    ]),
-  )
-
-  let head = update_snake_head(snake_direction[2])
-
-  // place premier élément du serpent
-  temp_snake.push(
-    add([
-      sprite(head[2]),
-      pos(
-        snake[snake.length - 1].pos.x + head[0],
-        snake[snake.length - 1].pos.y + head[1],
-      ),
-      area(),
-      'snake',
-    ]),
-  )
-
-  snake.map((x) => destroy(x))
-
-  snake = temp_snake
+  // construit le serpent
+  snake = build_snake()
 })
 
 let food = null
@@ -299,8 +256,12 @@ function respawn_food() {
 }
 
 onCollide('snake', 'food', (s, f) => {
-  //snake_length++
+  snake_length++
+  snake_direction = [snake_direction[0]].concat(snake_direction)
   respawn_food()
+  console.log(
+    `snake.length: ${snake.length}; snake_length: ${snake_length}; snake_direction.length ${snake_direction.length}`,
+  )
 })
 
 onCollide('snake', 'wall', (s, w) => {
@@ -309,17 +270,17 @@ onCollide('snake', 'wall', (s, w) => {
   respawn_all()
 })
 
-// onCollide('snake', 'snake', (s, t) => {
-//   run_action = false
-//   shake(12)
-//   respawn_all()
-// })
+onCollide('snake', 'snake', (s, t) => {
+  run_action = false
+  shake(12)
+  respawn_all()
+})
 
 /**
  *
  * @param {*} current_direction
  * @param {*} previous_direction
- * @returns [move_x, move_y, sprite]
+ * @returns {Array} move_x, move_y, sprite
  */
 function update_snake_tail(current_direction, previous_direction) {
   let move_x = 0
@@ -388,7 +349,7 @@ function update_snake_tail(current_direction, previous_direction) {
  *
  * @param {*} current_direction
  * @param {*} previous_direction
- * @returns [move_x, move_y, sprite]
+ * @returns {Array} move_x, move_y, sprite
  */
 function update_snake_body(current_direction, previous_direction) {
   let move_x = 0
@@ -462,9 +423,9 @@ function update_snake_body(current_direction, previous_direction) {
 }
 
 /**
- *
+ * 
  * @param {*} current_direction
- * @returns [move_x, move_y, sprite]
+ * @returns {Array} move_x, move_y, sprite
  */
 function update_snake_head(current_direction) {
   let move_x = 0
@@ -491,4 +452,85 @@ function update_snake_head(current_direction) {
   }
 
   return [move_x, move_y, sprite]
+}
+
+/**
+ * construit le serpent
+ * @returns {Array} snake
+ */
+function build_snake() {
+  let temp_snake = []
+
+  let tail = update_snake_tail(snake_direction[0], snake_direction[1])
+  // place dernier élément du serpent
+  temp_snake.push(
+    add([
+      sprite(tail[2]),
+      pos(snake[0].pos.x + tail[0], snake[0].pos.y + tail[1]),
+      area(),
+      'snake',
+    ]),
+  )
+
+  for (let i = 1; i < snake_length - 1; i++) {
+    let body = update_snake_body(snake_direction[i + 1], snake_direction[i])
+
+    // place le corps du serpent
+    temp_snake.push(
+      add([
+        sprite(body[2]),
+        pos(snake[i].pos.x + body[0], snake[i].pos.y + body[1]),
+        area(),
+        'snake',
+      ]),
+    )
+  }
+
+  let head = update_snake_head(snake_direction[snake_length - 1])
+
+  // place premier élément du serpent
+  temp_snake.push(
+    add([
+      sprite(head[2]),
+      pos(
+        snake[snake_length - 1].pos.x + head[0],
+        snake[snake_length - 1].pos.y + head[1],
+      ),
+      area(),
+      'snake',
+    ]),
+  )
+
+  snake.map((x) => destroy(x))
+
+  return temp_snake
+}
+
+/**
+ * Ajoute un élément au serpent
+ * @returns {Array} snake
+ */
+function add_part_to_snake() {
+  let temp_snake = []
+
+  let tail = update_snake_tail(snake_direction[0], snake_direction[1])
+
+  temp_snake.push(
+    add([
+      sprite(tail[2]),
+      pos(snake[0].pos.x - tail[0], snake[0].pos.y - tail[1]),
+      area(),
+      'snake',
+    ]),
+  )
+
+  snake.forEach((itr) => {
+    temp_snake.push(itr)
+  })
+
+  console.log(
+    `snake.length: ${snake.length}; snake_length: ${snake_length}; snake_direction.length ${snake_direction.length}`,
+  )
+
+  return temp_snake
 }
