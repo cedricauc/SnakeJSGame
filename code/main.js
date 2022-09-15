@@ -95,10 +95,12 @@ loadSpriteAtlas('snake.png', {
   },
 })
 
-//loadRoot('sounds/')
+loadRoot('sounds/')
+loadSound('score', 'score.mp3')
+loadSound('explosion', 'explosion.wav')
 
 const block_size = 40
-const map = addLevel(
+const LEVELS = [
   [
     '======================================',
     '=                                    =',
@@ -124,13 +126,14 @@ const map = addLevel(
     '=                                    =',
     '======================================',
   ],
-  {
-    width: block_size,
-    height: block_size,
-    pos: vec2(0, 0),
-    '=': () => [rect(block_size, block_size), color(255, 0, 0), area(), 'wall'],
-  },
-)
+]
+
+const levelConf = {
+  width: block_size,
+  height: block_size,
+  pos: vec2(0, 0),
+  '=': () => [rect(block_size, block_size), color(255, 0, 0), area(), 'wall'],
+}
 
 const directions = {
   UP: 'up',
@@ -147,7 +150,143 @@ let snake = []
 // initialise un tableau de directions
 let snake_direction = [directions.RIGHT, directions.RIGHT, directions.RIGHT]
 
-// instancie un serpent
+let move_delay = 0.2
+let timer = 0
+
+let food = null
+
+let score = 0
+let highScore = 0
+
+scene('start', () => {
+  add([text('Press enter to start', { size: 36 }), color(255, 255, 255)])
+
+  keyRelease('enter', () => {
+    go('game')
+  })
+})
+
+go('start')
+
+scene('game', (levelNumber = 0) => {
+  layers(['bg', 'game', 'ui'], 'game')
+
+  addLevel(LEVELS[levelNumber], levelConf)
+
+  add([
+    text('Level ' + (levelNumber + 1), { size: 24 }),
+    pos(vec2(160, 120)),
+    color(255, 255, 255),
+    origin('center'),
+    layer('ui'),
+    lifespan(1, { fade: 0.5 }),
+  ])
+
+  respawn_all()
+  onKeyPress('up', () => {
+    if (current_direction != directions.DOWN) {
+      current_direction = directions.UP
+    }
+  })
+
+  onKeyPress('down', () => {
+    if (current_direction != directions.UP) {
+      current_direction = directions.DOWN
+    }
+  })
+
+  onKeyPress('left', () => {
+    if (current_direction != directions.RIGHT) {
+      current_direction = directions.LEFT
+    }
+  })
+
+  onKeyPress('right', () => {
+    if (current_direction != directions.LEFT) {
+      current_direction = directions.RIGHT
+    }
+  })
+
+  onUpdate(() => {
+    if (!run_action) return
+    timer += dt()
+    if (timer < move_delay) return
+    timer = 0
+
+    // ajoute au tableau une saisie direction
+    snake_direction.push(current_direction)
+
+    // supprime dernier élément saisie direction du tableau
+    destroy(snake_direction.shift())
+
+    // lorsque le serpent s'agrandit
+    while (snake_length !== snake.length) {
+      snake = add_part_to_snake()
+    }
+
+    // construit le serpent
+    snake = build_snake()
+  })
+
+  onCollide('snake', 'food', (s, f) => {
+    play('score')
+    score += 1
+    snake_length++
+    snake_direction = [snake_direction[0]].concat(snake_direction)
+    respawn_food()
+    console.log(
+      `snake.length: ${snake.length}; snake_length: ${snake_length}; snake_direction.length ${snake_direction.length}`,
+    )
+  })
+
+  onCollide('snake', 'wall', (s, w) => {
+    //play('explosion')
+
+    run_action = false
+    shake(12)
+    go('gameover', score)
+    //respawn_all()
+  })
+
+  onCollide('snake', 'snake', (s, t) => {
+    //play('explosion')
+
+    run_action = false
+    shake(12)
+    go('gameover', score)
+    //respawn_all()
+  })
+})
+
+scene('gameover', (score) => {
+  if (score > highScore) {
+    highScore = score
+  }
+
+  add([
+    text(
+      'gameover!\n' +
+        'score: ' +
+        score +
+        '\nhigh score: ' +
+        highScore +
+        '\nPress enter to start',
+      {
+        size: 36,
+      },
+    ),
+    color(255, 255, 255),
+  ])
+
+  onKeyPress('enter', () => {
+    respawn_all()
+    go('game')
+  })
+})
+
+/**
+ * instancie un serpent
+ */
 function respawn_snake() {
   destroyAll('snake')
 
@@ -180,7 +319,9 @@ function respawn_snake() {
   current_direction = directions.RIGHT
 }
 
-// instancie tous les objets
+/**
+ * instancie serpent et items
+ */
 function respawn_all() {
   run_action = false
   wait(0.5, function () {
@@ -190,58 +331,9 @@ function respawn_all() {
   })
 }
 
-respawn_all()
-
-onKeyPress('up', () => {
-  if (current_direction != directions.DOWN) {
-    current_direction = directions.UP
-  }
-})
-
-onKeyPress('down', () => {
-  if (current_direction != directions.UP) {
-    current_direction = directions.DOWN
-  }
-})
-
-onKeyPress('left', () => {
-  if (current_direction != directions.RIGHT) {
-    current_direction = directions.LEFT
-  }
-})
-
-onKeyPress('right', () => {
-  if (current_direction != directions.LEFT) {
-    current_direction = directions.RIGHT
-  }
-})
-
-let move_delay = 0.2
-let timer = 0
-onUpdate(() => {
-  if (!run_action) return
-  timer += dt()
-  if (timer < move_delay) return
-  timer = 0
-
-  // ajoute au tableau une saisie direction
-  snake_direction.push(current_direction)
-
-  // supprime dernier élément saisie direction du tableau
-  destroy(snake_direction.shift())
-
-  // lorsque le serpent s'agrandit
-  if (snake_length !== snake.length) {
-    snake = add_part_to_snake()
-  }
-
-  // construit le serpent
-  snake = build_snake()
-})
-
-let food = null
-
-// instancie objet à collecter
+/**
+ * instancie objet à collecter
+ */
 function respawn_food() {
   let new_pos = rand(vec2(1, 1), vec2(13, 13))
   new_pos.x = Math.floor(new_pos.x)
@@ -254,30 +346,7 @@ function respawn_food() {
 
   food = add([sprite('gem'), pos(new_pos), area(), 'food', scale(2)])
 }
-
-onCollide('snake', 'food', (s, f) => {
-  snake_length++
-  snake_direction = [snake_direction[0]].concat(snake_direction)
-  respawn_food()
-  console.log(
-    `snake.length: ${snake.length}; snake_length: ${snake_length}; snake_direction.length ${snake_direction.length}`,
-  )
-})
-
-onCollide('snake', 'wall', (s, w) => {
-  run_action = false
-  shake(12)
-  respawn_all()
-})
-
-onCollide('snake', 'snake', (s, t) => {
-  run_action = false
-  shake(12)
-  respawn_all()
-})
-
 /**
- *
  * @param {*} current_direction
  * @param {*} previous_direction
  * @returns {Array} move_x, move_y, sprite
@@ -346,7 +415,6 @@ function update_snake_tail(current_direction, previous_direction) {
 }
 
 /**
- *
  * @param {*} current_direction
  * @param {*} previous_direction
  * @returns {Array} move_x, move_y, sprite
@@ -423,7 +491,6 @@ function update_snake_body(current_direction, previous_direction) {
 }
 
 /**
- * 
  * @param {*} current_direction
  * @returns {Array} move_x, move_y, sprite
  */
@@ -524,13 +591,7 @@ function add_part_to_snake() {
     ]),
   )
 
-  snake.forEach((itr) => {
-    temp_snake.push(itr)
-  })
-
-  console.log(
-    `snake.length: ${snake.length}; snake_length: ${snake_length}; snake_direction.length ${snake_direction.length}`,
-  )
+  temp_snake = temp_snake.concat(snake)
 
   return temp_snake
 }
