@@ -1,6 +1,6 @@
-import kaboom from '/lib/kaboom.mjs'
-import loadAssets from '/code/assets.js'
-import LEVELS from '/code/maps.js'
+import kaboom from '../lib/kaboom.mjs'
+import loadAssets from '../code/assets.js'
+import LEVELS from '../code/maps.js'
 
 kaboom({
   background: [35, 35, 35],
