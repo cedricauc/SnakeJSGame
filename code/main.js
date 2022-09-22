@@ -11,7 +11,7 @@ loadAssets()
 
 const block_size = 40
 
-const MAP_WIDTH = 36
+const MAP_WIDTH = 32
 const MAP_HEIGHT = 20
 
 let level_pos = vec2(
@@ -492,8 +492,6 @@ function build_snake() {
       'snake',
     ]),
   )
-
-  console.log(snake[snake_length - 1].pos.y)
 
   snake.map((x) => destroy(x))
 
